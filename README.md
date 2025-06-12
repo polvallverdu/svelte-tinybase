@@ -38,7 +38,7 @@ import { useTable } from "svelte-tinybase";
 
 const tasks = useTable(store, "tasks");
 
-tasks.value; // contains the latest table data. It's reactive.
+$tasks; // contains the latest table data. It's reactive.
 ```
 
 ### useRow
@@ -50,7 +50,7 @@ import { useRow } from "svelte-tinybase";
 
 const task = useRow(store, "tasks", "taskId");
 
-task.value; // contains the latest row data. It's reactive.
+$task; // contains the latest row data. It's reactive.
 ```
 
 ### useCell
@@ -62,7 +62,7 @@ import { useCell } from "svelte-tinybase";
 
 const title = useCell(store, "tasks", "taskId", "title");
 
-title.value; // contains the latest cell data. It's reactive.
+$title; // contains the latest cell data. It's reactive.
 ```
 
 ### useValues
@@ -74,7 +74,7 @@ import { useValues } from "svelte-tinybase";
 
 const values = useValues(store);
 
-values.value; // contains the latest store values. It's reactive.
+$values; // contains the latest store values. It's reactive.
 ```
 
 ## Reactiveness
@@ -82,7 +82,7 @@ values.value; // contains the latest store values. It's reactive.
 The value will update when the data changes, which will render the new value in the UI. The value is also reactive to changes, and even bindable.
 
 ```svelte
-<input bind:value={values.value.title} />
+<input bind:value={$values.title} />
 ```
 
 ## Examples & Demo

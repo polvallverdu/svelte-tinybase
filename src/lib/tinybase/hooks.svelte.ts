@@ -1,5 +1,6 @@
 import type { Id, OptionalSchemas, Row, Store, Table } from "tinybase/with-schemas";
 import type { CellIdFromSchema, TableIdFromSchema } from "./types.js";
+import { readable, writable, type Writable } from "svelte/store";
 
 /**
  * Creates a ProxyHandler for a TinyBase table that enables reactive updates
@@ -83,26 +84,26 @@ export function useTable<T extends OptionalSchemas, TableId extends TableIdFromS
   store: Store<T>,
   tableId: TableId,
 ) {
-  let table = $state(store.getTable(tableId));
+  const createValue = () => new Proxy(store.getTable(tableId), createTableHandler(store, tableId));
 
-  $effect(() => {
+  const { subscribe } = writable(createValue(), (set) => {
     const listener = store.addTableListener(tableId, () => {
-      table = store.getTable(tableId);
+      set(createValue());
     });
-
     return () => {
       store.delListener(listener);
     };
   });
 
   return {
-    get value() {
-      return new Proxy(table, createTableHandler(store, tableId));
-    },
-    set value(value) {
+    subscribe,
+    set(value: Table<T[0], TableId, false>) {
       store.setTable(tableId, value);
     },
-  };
+    update(updater: (value: Table<T[0], TableId, false>) => Table<T[0], TableId, false>) {
+      store.setTable(tableId, updater(store.getTable(tableId)));
+    },
+  } as Writable<Table<T[0], TableId, false>>;
 }
 
 /**
@@ -122,26 +123,26 @@ export function useRow<T extends OptionalSchemas, TableId extends TableIdFromSch
   tableId: TableId,
   rowId: Id,
 ) {
-  let row = $state(store.getRow(tableId, rowId));
+  const createValue = () => new Proxy(store.getRow(tableId, rowId), createRowHandler(store, tableId, rowId));
 
-  $effect(() => {
+  const { subscribe } = writable(createValue(), (set) => {
     const listener = store.addRowListener(tableId, rowId, () => {
-      row = store.getRow(tableId, rowId);
+      set(createValue());
     });
-
     return () => {
       store.delListener(listener);
     };
   });
 
   return {
-    get value() {
-      return new Proxy(row, createRowHandler(store, tableId, rowId));
+    subscribe,
+    set(value: Row<T[0], TableId, false>) {
+      store.setRow(tableId, rowId, value);
     },
-    set value(newRow) {
-      store.setRow(tableId, rowId, newRow);
+    update(updater: (value: Row<T[0], TableId, false>) => Row<T[0], TableId, false>) {
+      store.setRow(tableId, rowId, updater(store.getRow(tableId, rowId)));
     },
-  };
+  } as Writable<Row<T[0], TableId, false>>;
 }
 
 /**
@@ -163,31 +164,36 @@ export function useCell<
   TableId extends TableIdFromSchema<T[0]>,
   CellId extends CellIdFromSchema<T[0], TableId>,
 >(store: Store<T>, tableId: TableId, rowId: Id, cellId: CellId) {
-  let cell = $state(store.getCell(tableId, rowId, cellId));
-
-  $effect(() => {
+  const { subscribe } = writable(store.getCell(tableId, rowId, cellId), (set) => {
     // @ts-expect-error - cellId is a string
     const listener = store.addCellListener(tableId, rowId, cellId, () => {
-      cell = store.getCell(tableId, rowId, cellId);
+      set(store.getCell(tableId, rowId, cellId));
     });
-
     return () => {
       store.delListener(listener);
     };
   });
 
   return {
-    get value() {
-      return cell;
-    },
-    set value(value) {
+    subscribe,
+    set(value: unknown) {
       if (value === undefined) {
         store.delCell(tableId, rowId, cellId);
       } else {
+        // @ts-expect-error - value is any
         store.setCell(tableId, rowId, cellId, value);
       }
     },
-  };
+    update(updater: (value: unknown) => unknown) {
+      const newValue = updater(store.getCell(tableId, rowId, cellId));
+      if (newValue === undefined) {
+        store.delCell(tableId, rowId, cellId);
+      } else {
+        // @ts-expect-error - newValue is any
+        store.setCell(tableId, rowId, cellId, newValue);
+      }
+    },
+  } as Writable<unknown>;
 }
 
 /**
@@ -200,24 +206,22 @@ export function useCell<
  * @returns An object with a reactive value property that provides access to the store values
  */
 export function useValues<T extends OptionalSchemas>(store: Store<T>) {
-  let values = $state(store.getValues());
-
-  $effect(() => {
+  const { subscribe } = readable(store.getValues(), (set) => {
     const listener = store.addValuesListener(() => {
-      values = store.getValues();
+      set(store.getValues());
     });
-
     return () => {
       store.delListener(listener);
     };
   });
 
   return {
-    get value() {
-      return values;
+    subscribe,
+    set(value: Record<string, unknown>) {
+      store.setValues(value);
     },
-    set value(newValues) {
-      store.setValues(newValues);
+    update(updater: (value: Record<string, unknown>) => Record<string, unknown>) {
+      store.setValues(updater(store.getValues()));
     },
-  };
+  } as Writable<Record<string, unknown>>;
 }

@@ -39,10 +39,10 @@
   </div>
 
   <div class="flex flex-col gap-3">
-    {#each Object.keys(tasks.value) as id}
+    {#each Object.keys($tasks) as id (id)}
       <TodoListItem taskId={id} />
     {/each}
-    {#if Object.keys(tasks.value).length === 0}
+    {#if Object.keys($tasks).length === 0}
       <div class="rounded-lg bg-white p-4 text-center text-gray-500">
         No tasks yet. Add one above!
       </div>

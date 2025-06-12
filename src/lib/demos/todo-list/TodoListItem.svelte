@@ -20,11 +20,11 @@
 >
   <input
     type="checkbox"
-    bind:checked={task.value.completed}
+    bind:checked={$task.completed}
     class="h-5 w-5 rounded border-gray-300 text-green-500 focus:ring-green-500"
   />
-  <span class="flex-1 text-gray-700 {task.value.completed ? 'text-gray-400 line-through' : ''}">
-    {task.value.title}
+  <span class="flex-1 text-gray-700 {$task.completed ? 'text-gray-400 line-through' : ''}">
+    {$task.title}
   </span>
 
   <button
