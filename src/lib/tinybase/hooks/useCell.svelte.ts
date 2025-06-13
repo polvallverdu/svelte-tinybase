@@ -1,6 +1,6 @@
 import type { Id, OptionalSchemas, Store } from "tinybase/with-schemas";
 import type { CellIdFromSchema, TableIdFromSchema } from "../types.js";
-import { writable, type Writable } from "svelte/store";
+import { readable, type Writable } from "svelte/store";
 
 /**
  * Creates a reactive hook for accessing a specific cell in a TinyBase table.
@@ -25,7 +25,7 @@ export function useCell<
 
   type Value = ReturnType<typeof createValue>;
 
-  const { subscribe } = writable<Value>(createValue(), (set) => {
+  const { subscribe } = readable<Value>(createValue(), (set) => {
     // @ts-expect-error - cellId is a string
     const listener = store.addCellListener(tableId, rowId, cellId, () => {
       set(createValue());

@@ -1,6 +1,6 @@
 import type { OptionalSchemas, Store } from "tinybase/with-schemas";
 import type { TableIdFromSchema } from "../types.js";
-import { writable, type Writable } from "svelte/store";
+import { readable, type Writable } from "svelte/store";
 
 /**
  * Creates a reactive hook for accessing a TinyBase table.
@@ -21,7 +21,7 @@ export function useTable<T extends OptionalSchemas, TableId extends TableIdFromS
 
   type Value = ReturnType<typeof createValue>;
 
-  const { subscribe } = writable(createValue(), (set) => {
+  const { subscribe } = readable(createValue(), (set) => {
     const listener = store.addTableListener(tableId, () => {
       set(createValue());
     });

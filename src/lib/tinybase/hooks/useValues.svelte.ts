@@ -1,5 +1,5 @@
 import type { OptionalSchemas, Store } from "tinybase/with-schemas";
-import { writable, type Writable } from "svelte/store";
+import { readable, type Writable } from "svelte/store";
 
 /**
  * Creates a reactive hook for accessing TinyBase store values.
@@ -15,7 +15,7 @@ export function useValues<T extends OptionalSchemas>(store: Store<T>) {
 
   type Value = ReturnType<typeof createValue>;
 
-  const { subscribe } = writable(createValue(), (set) => {
+  const { subscribe } = readable(createValue(), (set) => {
     const listener = store.addValuesListener(() => {
       set(createValue());
     });
