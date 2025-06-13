@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { useTable } from "$lib/tinybase/hooks.svelte.js";
+  import { useTable } from "$lib/tinybase/hooks/useTable.svelte.js";
   import TodoListItem from "./TodoListItem.svelte";
   import { todoListStore } from "./todoListStore.svelte";
   import { nanoid } from "nanoid";
@@ -13,6 +13,7 @@
         title: newTaskTitle.trim(),
         completed: false,
       });
+
       newTaskTitle = "";
     }
   }
