@@ -1,0 +1,211 @@
+import type { Id, OptionalSchemas } from "tinybase/with-schemas";
+import type { Queries, Indexes, Metrics, Relationships, Checkpoints } from "tinybase/with-schemas";
+
+/**
+ * Reactive access to a result table from a TinyBase query.
+ *
+ * @param queries - The TinyBase Queries instance.
+ * @param queryId - The ID of the query.
+ * @returns The result table data.
+ */
+export function resultTable<Schemas extends OptionalSchemas>(
+  queries: Queries<Schemas>,
+  queryId: Id,
+) {
+  let resultTable = $state(queries.getResultTable(queryId));
+
+  $effect(() => {
+    const listener = queries.addResultTableListener(queryId, () => {
+      resultTable = queries.getResultTable(queryId);
+    });
+
+    return () => {
+      queries.delListener(listener);
+    };
+  });
+
+  return resultTable;
+}
+
+/**
+ * Reactive access to a result row from a TinyBase query.
+ *
+ * @param queries - The TinyBase Queries instance.
+ * @param queryId - The ID of the query.
+ * @param rowId - The ID of the row in the result table.
+ * @returns The result row data.
+ */
+export function resultRow<Schemas extends OptionalSchemas>(
+  queries: Queries<Schemas>,
+  queryId: Id,
+  rowId: Id,
+) {
+  let resultRow = $state(queries.getResultRow(queryId, rowId));
+
+  $effect(() => {
+    const listener = queries.addResultRowListener(queryId, rowId, () => {
+      resultRow = queries.getResultRow(queryId, rowId);
+    });
+
+    return () => {
+      queries.delListener(listener);
+    };
+  });
+
+  return resultRow;
+}
+
+/**
+ * Reactive access to slice row IDs from a TinyBase index.
+ *
+ * @param indexes - The TinyBase Indexes instance.
+ * @param indexId - The ID of the index.
+ * @param sliceId - The ID of the slice.
+ * @returns The slice row IDs.
+ */
+export function sliceRowIds<Schemas extends OptionalSchemas>(
+  indexes: Indexes<Schemas>,
+  indexId: Id,
+  sliceId: Id,
+) {
+  let sliceRowIds = $state(indexes.getSliceRowIds(indexId, sliceId));
+
+  $effect(() => {
+    const listener = indexes.addSliceRowIdsListener(indexId, sliceId, () => {
+      sliceRowIds = indexes.getSliceRowIds(indexId, sliceId);
+    });
+
+    return () => {
+      indexes.delListener(listener);
+    };
+  });
+
+  return $derived(sliceRowIds);
+}
+
+/**
+ * Reactive access to a metric value from TinyBase metrics.
+ *
+ * @param metrics - The TinyBase Metrics instance.
+ * @param metricId - The ID of the metric.
+ * @returns The metric value.
+ */
+export function metric<Schemas extends OptionalSchemas>(metrics: Metrics<Schemas>, metricId: Id) {
+  let metric = $state(metrics.getMetric(metricId));
+
+  $effect(() => {
+    const listener = metrics.addMetricListener(metricId, () => {
+      metric = metrics.getMetric(metricId);
+    });
+
+    return () => {
+      metrics.delListener(listener);
+    };
+  });
+
+  return metric;
+}
+
+/**
+ * Reactive access to linked row IDs from a TinyBase relationship.
+ *
+ * @param relationships - The TinyBase Relationships instance.
+ * @param relationshipId - The ID of the relationship.
+ * @param firstRowId - The ID of the first row.
+ * @returns The linked row IDs.
+ */
+export function linkedRowIds<Schemas extends OptionalSchemas>(
+  relationships: Relationships<Schemas>,
+  relationshipId: Id,
+  firstRowId: Id,
+) {
+  let linkedRowIds = $state(relationships.getLinkedRowIds(relationshipId, firstRowId));
+
+  $effect(() => {
+    const listener = relationships.addLinkedRowIdsListener(relationshipId, firstRowId, () => {
+      linkedRowIds = relationships.getLinkedRowIds(relationshipId, firstRowId);
+    });
+
+    return () => {
+      relationships.delListener(listener);
+    };
+  });
+
+  return $derived(linkedRowIds);
+}
+
+/**
+ * Reactive access to a remote row ID from a TinyBase relationship.
+ *
+ * @param relationships - The TinyBase Relationships instance.
+ * @param relationshipId - The ID of the relationship.
+ * @param localRowId - The ID of the local row.
+ * @returns The remote row ID, or undefined if not found.
+ */
+export function remoteRowId<Schemas extends OptionalSchemas>(
+  relationships: Relationships<Schemas>,
+  relationshipId: Id,
+  localRowId: Id,
+) {
+  let remoteRowId = $state(relationships.getRemoteRowId(relationshipId, localRowId));
+
+  $effect(() => {
+    const listener = relationships.addRemoteRowIdListener(relationshipId, localRowId, () => {
+      remoteRowId = relationships.getRemoteRowId(relationshipId, localRowId);
+    });
+
+    return () => {
+      relationships.delListener(listener);
+    };
+  });
+
+  return remoteRowId;
+}
+
+/**
+ * Reactive access to checkpoint IDs from TinyBase checkpoints.
+ *
+ * @param checkpoints - The TinyBase Checkpoints instance.
+ * @returns The checkpoint IDs.
+ */
+export function checkpointIds<Schemas extends OptionalSchemas>(checkpoints: Checkpoints<Schemas>) {
+  let checkpointIds = $state(checkpoints.getCheckpointIds());
+
+  $effect(() => {
+    const listener = checkpoints.addCheckpointIdsListener(() => {
+      checkpointIds = checkpoints.getCheckpointIds();
+    });
+
+    return () => {
+      checkpoints.delListener(listener);
+    };
+  });
+
+  return $derived(checkpointIds);
+}
+
+/**
+ * Reactive access to a checkpoint from TinyBase checkpoints.
+ *
+ * @param checkpoints - The TinyBase Checkpoints instance.
+ * @param checkpointId - The ID of the checkpoint.
+ * @returns The checkpoint data, or undefined if not found.
+ */
+export function checkpoint<Schemas extends OptionalSchemas>(
+  checkpoints: Checkpoints<Schemas>,
+  checkpointId: Id,
+) {
+  let checkpoint = $state(checkpoints.getCheckpoint(checkpointId));
+
+  $effect(() => {
+    const listener = checkpoints.addCheckpointListener(checkpointId, () => {
+      checkpoint = checkpoints.getCheckpoint(checkpointId);
+    });
+
+    return () => {
+      checkpoints.delListener(listener);
+    };
+  });
+
+  return checkpoint;
+}
