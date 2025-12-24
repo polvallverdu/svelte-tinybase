@@ -116,6 +116,52 @@ export function tables<T extends OptionalSchemas>(store: Store<T>) {
 }
 
 /**
+ * Reactive access to table IDs in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The table IDs.
+ */
+export function tableIds<T extends OptionalSchemas>(store: Store<T>) {
+  let tableIds = $state(store.getTableIds());
+
+  $effect(() => {
+    const listener = store.addTableIdsListener(() => {
+      tableIds = store.getTableIds();
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return tableIds;
+}
+
+/**
+ * Reactive access to value IDs in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The value IDs.
+ */
+export function valueIds<T extends OptionalSchemas>(store: Store<T>) {
+  let valueIds = $state(store.getValueIds());
+
+  $effect(() => {
+    const listener = store.addValueIdsListener(() => {
+      valueIds = store.getValueIds();
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return valueIds;
+}
+
+/**
  * Reactive access to all values in a TinyBase store.
  *
  * @template T - The type of the store's schemas.
@@ -212,7 +258,7 @@ export function sortedRowIds<
     };
   });
 
-  return $derived(rowIds);
+  return rowIds;
 }
 
 /**
@@ -240,7 +286,7 @@ export function rowIds<T extends OptionalSchemas, TableId extends TableIdFromSch
     };
   });
 
-  return $derived(rowIds);
+  return rowIds;
 }
 
 /**
@@ -270,5 +316,5 @@ export function cellIds<T extends OptionalSchemas, TableId extends TableIdFromSc
     };
   });
 
-  return $derived(cellIds);
+  return cellIds;
 }
