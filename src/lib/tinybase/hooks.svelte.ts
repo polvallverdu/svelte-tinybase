@@ -1,164 +1,19 @@
-import type { Id, OptionalSchemas, Row, Store, Table } from "tinybase/with-schemas";
-import type { CellIdFromSchema, TableIdFromSchema } from "./types.js";
+import type { Id, OptionalSchemas, Store } from "tinybase/with-schemas";
+import type { CellIdFromSchema, TableIdFromSchema, ValueIdFromSchema } from "./types.js";
 
 /**
- * Creates a ProxyHandler for a TinyBase table that enables reactive updates
- * when table data is modified. This handler intercepts property access and
- * mutations to maintain synchronization with the store.
+ * Reactive access to a cell in a TinyBase table.
  *
  * @template T - The type of the store's schemas
- * @template TableId - The type of the table ID
- * @param store - The TinyBase store instance
- * @param tableId - The ID of the table to create a handler for
- * @returns A ProxyHandler that enables reactive table operations
+ * @template TableId - The type of the table ID.
+ * @template CellId - The type of the cell ID.
+ * @param store - The TinyBase store instance.
+ * @param tableId - The ID of the table containing the cell.
+ * @param rowId - The ID of the row containing the cell.
+ * @param cellId - The ID of the cell to create a hook for.
+ * @returns The value of the cell.
  */
-function createTableHandler<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
-  store: Store<T>,
-  tableId: TableId,
-): ProxyHandler<Table<T[0], TableId, false>> {
-  return {
-    get(target, prop, receiver) {
-      const val = Reflect.get(target, prop, receiver);
-      if (!val) return val;
-
-      // nested proxies :D
-      const handler = createRowHandler(store, tableId, prop as Id);
-      return new Proxy(val, handler);
-    },
-    set(_, prop, value) {
-      if (typeof prop !== "string") {
-        throw new Error("Table property must be a string");
-      }
-
-      store.setRow(tableId, prop, value);
-      return true;
-    },
-  };
-}
-
-/**
- * Creates a ProxyHandler for a TinyBase row that enables reactive updates
- * when row data is modified. This handler intercepts property access and
- * mutations to maintain synchronization with the store.
- *
- * @template T - The type of the store's schemas
- * @template TableId - The type of the table ID
- * @param store - The TinyBase store instance
- * @param tableId - The ID of the table containing the row
- * @param rowId - The ID of the row to create a handler for
- * @returns A ProxyHandler that enables reactive row operations
- */
-function createRowHandler<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
-  store: Store<T>,
-  tableId: TableId,
-  rowId: Id,
-): ProxyHandler<Row<T[0], TableId, false>> {
-  return {
-    get(target, prop, receiver) {
-      return Reflect.get(target, prop, receiver);
-    },
-    set(_, prop, value) {
-      if (typeof prop !== "string") {
-        throw new Error("Row property must be a string");
-      }
-
-      store.setCell(tableId, rowId, prop, value);
-      return true;
-    },
-  };
-}
-
-/**
- * Creates a reactive hook for accessing a TinyBase table.
- * The returned object provides a reactive proxy to the table data that
- * automatically updates when the underlying store changes.
- *
- * @template T - The type of the store's schemas
- * @template TableId - The type of the table ID
- * @param store - The TinyBase store instance
- * @param tableId - The ID of the table to create a hook for
- * @returns An object with a reactive value property that provides access to the table
- */
-export function useTable<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
-  store: Store<T>,
-  tableId: TableId,
-) {
-  let table = $state(store.getTable(tableId));
-
-  $effect(() => {
-    const listener = store.addTableListener(tableId, () => {
-      table = store.getTable(tableId);
-    });
-
-    return () => {
-      store.delListener(listener);
-    };
-  });
-
-  return {
-    get value() {
-      return new Proxy(table, createTableHandler(store, tableId));
-    },
-    set value(value) {
-      store.setTable(tableId, value);
-    },
-  };
-}
-
-/**
- * Creates a reactive hook for accessing a specific row in a TinyBase table.
- * The returned object provides a reactive proxy to the row data that
- * automatically updates when the underlying store changes.
- *
- * @template T - The type of the store's schemas
- * @template TableId - The type of the table ID
- * @param store - The TinyBase store instance
- * @param tableId - The ID of the table containing the row
- * @param rowId - The ID of the row to create a hook for
- * @returns An object with a reactive value property that provides access to the row
- */
-export function useRow<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
-  store: Store<T>,
-  tableId: TableId,
-  rowId: Id,
-) {
-  let row = $state(store.getRow(tableId, rowId));
-
-  $effect(() => {
-    const listener = store.addRowListener(tableId, rowId, () => {
-      row = store.getRow(tableId, rowId);
-    });
-
-    return () => {
-      store.delListener(listener);
-    };
-  });
-
-  return {
-    get value() {
-      return new Proxy(row, createRowHandler(store, tableId, rowId));
-    },
-    set value(newRow) {
-      store.setRow(tableId, rowId, newRow);
-    },
-  };
-}
-
-/**
- * Creates a reactive hook for accessing a specific cell in a TinyBase table.
- * The returned object provides a reactive value that automatically updates
- * when the underlying store changes.
- *
- * @template T - The type of the store's schemas
- * @template TableId - The type of the table ID
- * @template CellId - The type of the cell ID
- * @param store - The TinyBase store instance
- * @param tableId - The ID of the table containing the cell
- * @param rowId - The ID of the row containing the cell
- * @param cellId - The ID of the cell to create a hook for
- * @returns An object with a reactive value property that provides access to the cell
- */
-export function useCell<
+export function cell<
   T extends OptionalSchemas,
   TableId extends TableIdFromSchema<T[0]>,
   CellId extends CellIdFromSchema<T[0], TableId>,
@@ -176,30 +31,144 @@ export function useCell<
     };
   });
 
-  return {
-    get value() {
-      return cell;
-    },
-    set value(value) {
-      if (value === undefined) {
-        store.delCell(tableId, rowId, cellId);
-      } else {
-        store.setCell(tableId, rowId, cellId, value);
-      }
-    },
-  };
+  return cell;
 }
 
 /**
- * Creates a reactive hook for accessing TinyBase store values.
- * The returned object provides a reactive value that automatically updates
- * when the underlying store values change.
+ * Reactive access to a row in a TinyBase table.
  *
- * @template T - The type of the store's schemas
- * @param store - The TinyBase store instance
- * @returns An object with a reactive value property that provides access to the store values
+ * @template T - The type of the store's schemas.
+ * @template TableId - The type of the table ID.
+ * @param store - The TinyBase store instance.
+ * @param tableId - The ID of the table containing the row.
+ * @param rowId - The ID of the row to access.
+ * @returns The row data.
  */
-export function useValues<T extends OptionalSchemas>(store: Store<T>) {
+export function row<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
+  store: Store<T>,
+  tableId: TableId,
+  rowId: Id,
+) {
+  let row = $state(store.getRow(tableId, rowId));
+
+  $effect(() => {
+    const listener = store.addRowListener(tableId, rowId, () => {
+      row = store.getRow(tableId, rowId);
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return row;
+}
+
+/**
+ * Reactive access to a TinyBase table.
+ *
+ * @template T - The type of the store's schemas.
+ * @template TableId - The type of the table ID.
+ * @param store - The TinyBase store instance.
+ * @param tableId - The ID of the table to access.
+ * @returns The table data.
+ */
+export function table<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
+  store: Store<T>,
+  tableId: TableId,
+) {
+  let table = $state(store.getTable(tableId));
+
+  $effect(() => {
+    const listener = store.addTableListener(tableId, () => {
+      table = store.getTable(tableId);
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return table;
+}
+
+/**
+ * Reactive access to all tables in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The tables data.
+ */
+export function tables<T extends OptionalSchemas>(store: Store<T>) {
+  let tables = $state(store.getTables());
+
+  $effect(() => {
+    const listener = store.addTablesListener(() => {
+      tables = store.getTables();
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return tables;
+}
+
+/**
+ * Reactive access to table IDs in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The table IDs.
+ */
+export function tableIds<T extends OptionalSchemas>(store: Store<T>) {
+  let tableIds = $state(store.getTableIds());
+
+  $effect(() => {
+    const listener = store.addTableIdsListener(() => {
+      tableIds = store.getTableIds();
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return tableIds;
+}
+
+/**
+ * Reactive access to value IDs in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The value IDs.
+ */
+export function valueIds<T extends OptionalSchemas>(store: Store<T>) {
+  let valueIds = $state(store.getValueIds());
+
+  $effect(() => {
+    const listener = store.addValueIdsListener(() => {
+      valueIds = store.getValueIds();
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return valueIds;
+}
+
+/**
+ * Reactive access to all values in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @param store - The TinyBase store instance.
+ * @returns The values data.
+ */
+export function values<T extends OptionalSchemas>(store: Store<T>) {
   let values = $state(store.getValues());
 
   $effect(() => {
@@ -212,12 +181,140 @@ export function useValues<T extends OptionalSchemas>(store: Store<T>) {
     };
   });
 
-  return {
-    get value() {
-      return values;
-    },
-    set value(newValues) {
-      store.setValues(newValues);
-    },
-  };
+  return values;
+}
+
+/**
+ * Reactive access to a value in a TinyBase store.
+ *
+ * @template T - The type of the store's schemas.
+ * @template ValueId - The type of the value ID.
+ * @param store - The TinyBase store instance.
+ * @param valueId - The ID of the value to access.
+ * @returns The value data.
+ */
+export function value<T extends OptionalSchemas, ValueId extends ValueIdFromSchema<T>>(
+  store: Store<T>,
+  valueId: ValueId,
+) {
+  let value = $state(store.getValue(valueId));
+
+  $effect(() => {
+    const listener = store.addValueListener(valueId, () => {
+      value = store.getValue(valueId);
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return value;
+}
+
+/**
+ * Reactive access to sorted row IDs in a TinyBase table.
+ *
+ * @template T - The type of the store's schemas.
+ * @template TableId - The type of the table ID.
+ * @template CellId - The type of the cell ID.
+ * @param tableId - The ID of the table.
+ * @param cellId - The ID of the cell to sort by.
+ * @param descending - Whether to sort in descending order.
+ * @param offset - The offset for pagination.
+ * @param limit - The limit for pagination.
+ * @param store - The TinyBase store instance.
+ * @returns The sorted row IDs.
+ */
+export function sortedRowIds<
+  T extends OptionalSchemas,
+  TableId extends TableIdFromSchema<T[0]>,
+  CellId extends CellIdFromSchema<T[0], TableId>,
+>(
+  tableId: TableId,
+  cellId: CellId,
+  descending: boolean,
+  offset: number | undefined,
+  limit: number | undefined,
+  store: Store<T>,
+) {
+  let rowIds = $state(store.getSortedRowIds(tableId, cellId, descending, offset, limit));
+
+  $effect(() => {
+    const listener = store.addSortedRowIdsListener(
+      tableId,
+      cellId,
+      descending,
+      // @ts-expect-error - offset can be undefined but listener accepts it at runtime
+      offset,
+      limit,
+      () => {
+        rowIds = store.getSortedRowIds(tableId, cellId, descending, offset, limit);
+      },
+    );
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return rowIds;
+}
+
+/**
+ * Reactive access to row IDs in a TinyBase table.
+ *
+ * @template T - The type of the store's schemas.
+ * @template TableId - The type of the table ID.
+ * @param tableId - The ID of the table.
+ * @param store - The TinyBase store instance.
+ * @returns The row IDs.
+ */
+export function rowIds<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
+  tableId: TableId,
+  store: Store<T>,
+) {
+  let rowIds = $state(store.getRowIds(tableId));
+
+  $effect(() => {
+    const listener = store.addRowIdsListener(tableId, () => {
+      rowIds = store.getRowIds(tableId);
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return rowIds;
+}
+
+/**
+ * Reactive access to cell IDs in a TinyBase table row.
+ *
+ * @template T - The type of the store's schemas.
+ * @template TableId - The type of the table ID.
+ * @param tableId - The ID of the table.
+ * @param rowId - The ID of the row.
+ * @param store - The TinyBase store instance.
+ * @returns The cell IDs.
+ */
+export function cellIds<T extends OptionalSchemas, TableId extends TableIdFromSchema<T[0]>>(
+  tableId: TableId,
+  rowId: Id,
+  store: Store<T>,
+) {
+  let cellIds = $state(store.getCellIds(tableId, rowId));
+
+  $effect(() => {
+    const listener = store.addCellIdsListener(tableId, rowId, () => {
+      cellIds = store.getCellIds(tableId, rowId);
+    });
+
+    return () => {
+      store.delListener(listener);
+    };
+  });
+
+  return cellIds;
 }
